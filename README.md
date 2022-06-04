@@ -48,5 +48,6 @@ A sample run of the project's output is provided in the `output.yaml` file.
 
 To generate it yoruself, run:
 ```console
+jb update
 jsonnet -J vendor app.jsonnet | gojsontoyaml
 ```
