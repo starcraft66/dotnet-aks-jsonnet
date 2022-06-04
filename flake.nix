@@ -19,7 +19,7 @@
       inherit (nixpkgs) lib;
     in {
       devShell = pkgs.mkShell {
-        name = "k8s-app-template-ksonnet";
+        name = "dotnet-aks-jsonnet";
 
         buildInputs = with pkgs; [
           go-jsonnet
@@ -29,15 +29,6 @@
           git
           kubeconform
         ];
-
-        shellHook = ''
-          if [ -n "$ZSH_VERSION" ]; then
-            # Unsupported for now
-            :
-          else
-            source <(kubectl completion bash) 2>/dev/null;
-          fi
-        '';
       };
   });
 }
