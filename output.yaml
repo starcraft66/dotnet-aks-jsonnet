@@ -1,0 +1,118 @@
+apiVersion: v1
+items:
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: sample-function-app
+  spec:
+    replicas: 3
+    selector:
+      matchLabels:
+        app.kubernetes.io/name: sample-function-app
+    template:
+      metadata:
+        labels:
+          app.kubernetes.io/name: sample-function-app
+      spec:
+        containers:
+        - envFrom:
+          - secretRef:
+              name: azure-key-vault-app-secrets-1
+          - secretRef:
+              name: azure-key-vault-app-secrets-2
+          - configMapRef:
+              name: sample-function-app-config
+          image: myregistry.azurecr.io/samples/dotnet:v2022-01-22
+          name: sample-function-app
+          ports:
+          - containerPort: 8080
+            name: http
+        - image: mcr.microsoft.com/dotnet/monitor:6.0.0
+          name: dotnet-monitor
+    volumes:
+    - csi:
+        driver: secrets-store.csi.k8s.io
+        readOnly: true
+        volumeAttributes:
+          secretProviderClass: azure-key-vault-app-secrets-1
+      name: azure-key-vault-app-secrets-1
+    - csi:
+        driver: secrets-store.csi.k8s.io
+        readOnly: true
+        volumeAttributes:
+          secretProviderClass: azure-key-vault-app-secrets-2
+      name: azure-key-vault-app-secrets-2
+- apiVersion: v1
+  data:
+    key: value
+  kind: ConfigMap
+  metadata:
+    name: sample-function-app-config
+- apiVersion: secrets-store.csi.x-k8s.io/v1
+  kind: SecretProviderClass
+  metadata:
+    name: azure-key-vault-app-secrets-1
+  spec:
+    parameters:
+      cloudEnvFileName: ""
+      cloudName: ""
+      keyvaultName: app-secrets-1
+      objects: ""
+      usePodIdentity: false
+      useVMManagedIdentity: false
+      userAssignedIdentityID: false
+    provider: azure
+    secretObjects:
+      data:
+      - key: username
+        objectName: username
+      - key: password
+        objectName: password
+      secretName: azure-key-vault-app-secrets-1
+- apiVersion: secrets-store.csi.x-k8s.io/v1
+  kind: SecretProviderClass
+  metadata:
+    name: azure-key-vault-app-secrets-2
+  spec:
+    parameters:
+      cloudEnvFileName: ""
+      cloudName: ""
+      keyvaultName: app-secrets-2
+      objects: ""
+      usePodIdentity: false
+      useVMManagedIdentity: false
+      userAssignedIdentityID: false
+    provider: azure
+    secretObjects:
+      data:
+      - key: username
+        objectName: username
+      - key: password
+        objectName: password
+      secretName: azure-key-vault-app-secrets-2
+- apiVersion: v1
+  kind: Service
+  metadata:
+    name: sample-function-app
+  spec:
+    ports:
+    - port: 80
+      targetPort: http
+    selector:
+      app.kubernetes.io/name: sample-function-app
+- apiVersion: networking.k8s.io/v1
+  kind: Ingress
+  metadata:
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+    name: sample-function-app
+  spec:
+    ingressClassName: ingress-nginx
+    rules:
+    - host: www.example.com
+    - host: www2.example.com
+    tls:
+    - hosts:
+      - www.example.com
+      - www2.example.com
+kind: List
