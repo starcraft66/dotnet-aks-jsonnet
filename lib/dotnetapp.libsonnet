@@ -88,61 +88,64 @@ local mkSecret(secretName) =
     name: secretName,
   };
 
-{
-  mkKeyVault(name, secrets=[]):
+local mkKeyVault(name, secrets=[]) =
   {
     name: name,
     secrets: [mkSecret(secretName=secret) for secret in secrets],
     k8sSecretName: 'azure-key-vault-' + name,
-  },
+  };
 
+{
   mkDotnetApplication(name, image, config, keyVaults, replicas, web):
-  {
-    // keyVaultObjects:: [mkKeyVault(kv) for kv in keyVaults],
-    apiVersion: 'v1',
-    kind: 'List',
-    items:
-      [
-        deploy.new(name=name, containers=[
-          container.new(name=name, image=image)
-          + container.withEnvFromMixin([
-            envFromSource.secretRef.withName(kv.k8sSecretName)
-            for kv in keyVaults
-          ])
-          + container.withEnvFromMixin(envFromSource.configMapRef.withName(name + '-config'))
-          + container.withPortsMixin([
-            containerPort.newNamed(8080, 'http'),
+    {
+      // Stupidity because std.mapWithKeys returns some object with original keys and not an array like you'd expect a map to
+      // A quick search revelas I'm not the only one to complain about this... oh well. Here's the workaround
+      // https://github.com/google/jsonnet/issues/543
+      keyVaultObjects:: std.map(function(key) mkKeyVault(key, keyVaults[key]), std.objectFields(keyVaults)),
+      apiVersion: 'v1',
+      kind: 'List',
+      items:
+        [
+          deploy.new(name=name, containers=[
+            container.new(name=name, image=image)
+            + container.withEnvFromMixin([
+              envFromSource.secretRef.withName(kv.k8sSecretName)
+              for kv in self.keyVaultObjects
+            ])
+            + container.withEnvFromMixin(envFromSource.configMapRef.withName(name + '-config'))
+            + container.withPortsMixin([
+              containerPort.newNamed(8080, 'http'),
+            ]),
+            container.new(name='dotnet-monitor', image='mcr.microsoft.com/dotnet/monitor:6.0.0'),
+          ], replicas=replicas, podLabels={ 'app.kubernetes.io/name': name })
+          + withoutNameAnnotation
+          + csiKeyVaultVolumes(self.keyVaultObjects),
+        ]
+        + [
+          configMap.new(name + '-config', config),
+        ]
+        + [
+          azureKeyVaultSecretProviderClass(kv)
+          for kv in self.keyVaultObjects
+        ]
+        + [
+          service.new(name, {
+            'app.kubernetes.io/name': name,
+          }, [
+            servicePort.new(80, 'http'),
           ]),
-          container.new(name='dotnet-monitor', image='mcr.microsoft.com/dotnet/monitor:6.0.0'),
-        ], replicas=replicas, podLabels={ 'app.kubernetes.io/name': name })
-        + withoutNameAnnotation
-        + csiKeyVaultVolumes(keyVaults),
-      ]
-      + [
-        configMap.new(name + '-config', config),
-      ]
-      + [
-        azureKeyVaultSecretProviderClass(kv)
-        for kv in keyVaults
-      ]
-      + [
-        service.new(name, {
-          'app.kubernetes.io/name': name,
-        }, [
-          servicePort.new(80, 'http'),
-        ]),
-      ]
-      + [
-        ingress.new(name)
-        + ingress.metadata.withAnnotations({
-          'cert-manager.io/cluster-issuer': 'letsencrypt-prod',
-        })
-        + ingress.spec.withIngressClassName('ingress-nginx')
-        + ingress.spec.withRulesMixin([
-          ingressRule.withHost(host)
-          for host in web.hosts
-        ])
-        + ingress.spec.withTls(ingressTLS.withHosts(web.hosts)),
-      ],
-  }
+        ]
+        + [
+          ingress.new(name)
+          + ingress.metadata.withAnnotations({
+            'cert-manager.io/cluster-issuer': 'letsencrypt-prod',
+          })
+          + ingress.spec.withIngressClassName('ingress-nginx')
+          + ingress.spec.withRulesMixin([
+            ingressRule.withHost(host)
+            for host in web.hosts
+          ])
+          + ingress.spec.withTls(ingressTLS.withHosts(web.hosts)),
+        ],
+    },
 }

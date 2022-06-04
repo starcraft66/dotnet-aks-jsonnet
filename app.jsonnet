@@ -1,4 +1,4 @@
-local lib = import "lib/dotnetapp.libsonnet";
+local lib = import 'lib/dotnetapp.libsonnet';
 
 lib.mkDotnetApplication(
   name='sample-function-app',
@@ -15,20 +15,14 @@ lib.mkDotnetApplication(
   config={
     key: 'value',
   },
-  keyVaults=[
-    lib.mkKeyVault(
-      name='app-secrets-1',
-      secrets=[
-        'username',
-        'password',
-      ],
-    ),
-    lib.mkKeyVault(
-      name='app-secrets-2',
-      secrets=[
-        'username',
-        'password',
-      ],
-    ),
-  ]
+  keyVaults={
+    'app-secrets-1': [
+      'username',
+      'password',
+    ],
+    'app-secrets-2': [
+      'username',
+      'password',
+    ],
+  }
 )
