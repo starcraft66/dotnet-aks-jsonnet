@@ -26,6 +26,8 @@ There is, fortunately, a saner approach than templating to create configuration 
 
 Yeah, that's the approach I am taking in this project 😎
 
+I am currently making extensive use of [this](https://github.com/jsonnet-libs/k8s) magnificent project that automatically generates jsonnet bindings from the kubernetes api specification (as well as CRDs) with a very ergonomic interface that cuts away a lot of verbosity. Go take a look and star it, it is awesome!
+
 ## Roadmap:
 
 - [x] Scaffolding configurations for `Deployment`, `Service` and `Ingress` from settings file
