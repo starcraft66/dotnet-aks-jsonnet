@@ -28,6 +28,7 @@
           jq
           git
           kubeconform
+          kubectl
         ];
       };
   });
