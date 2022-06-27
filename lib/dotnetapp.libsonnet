@@ -31,7 +31,7 @@ local withoutNameAnnotation = {
   },
 };
 
-local azureKeyVaultSecretProviderClass(keyVault, usePodIdentity=false, useVMManagedIdentity=false, userAssignedIdentityID=false) = {
+local azureKeyVaultSecretProviderClass(keyVault, usePodIdentity='false', useVMManagedIdentity='true', userAssignedIdentityID='') = {
   apiVersion: 'secrets-store.csi.x-k8s.io/v1',
   kind: 'SecretProviderClass',
   metadata: {
