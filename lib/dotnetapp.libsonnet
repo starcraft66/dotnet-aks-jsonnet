@@ -39,7 +39,7 @@ local azureKeyVaultSecretProviderClass(keyVault, usePodIdentity=false, useVMMana
   },
   spec: {
     provider: 'azure',
-    secretObjects: {
+    secretObjects: [{
       data: [
         {
           key: secret.name,
@@ -48,38 +48,35 @@ local azureKeyVaultSecretProviderClass(keyVault, usePodIdentity=false, useVMMana
         for secret in keyVault.secrets
       ],
       secretName: keyVault.k8sSecretName,
-    },
+    }],
     parameters: {
       usePodIdentity: usePodIdentity,
       useVMManagedIdentity: useVMManagedIdentity,
       userAssignedIdentityID: userAssignedIdentityID,
       keyvaultName: keyVault.name,
-      cloudName: '',
-      cloudEnvFileName: '',
-      objects: '',
     },
   },
 };
 
 local csiKeyVaultVolumes(keyVaults) = {
-  // TODO: Handle conditional appending if volumes
-  // already exist
-  // We can look at how the k8s mixins work to
-  // implement this properly
   spec+: {
-    volumes: /*super.volumes +*/ [
-      {
-        name: 'azure-key-vault-' + kv.name,
-        csi: {
-          driver: 'secrets-store.csi.k8s.io',
-          readOnly: true,
-          volumeAttributes: {
-            secretProviderClass: 'azure-key-vault-' + kv.name,
-          },
-        },
-      }
-      for kv in keyVaults
-    ],
+    template+: {
+      spec+: {
+        volumes+: [
+          {
+            name: 'azure-key-vault-' + kv.name,
+            csi: {
+              driver: 'secrets-store.csi.k8s.io',
+              readOnly: true,
+              volumeAttributes: {
+                secretProviderClass: 'azure-key-vault-' + kv.name,
+              },
+            },
+          }
+          for kv in keyVaults
+        ],
+      },
+    },
   },
 };
 
