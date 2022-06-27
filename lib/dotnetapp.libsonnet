@@ -135,7 +135,7 @@ local mkKeyVault(name, secrets=[]) =
             servicePort.new(80, 'http'),
           ]),
         ]
-        + [
+        + if web.enabled then [
           ingress.new(name)
           + ingress.metadata.withAnnotations({
             'cert-manager.io/cluster-issuer': 'letsencrypt-prod',
@@ -145,7 +145,10 @@ local mkKeyVault(name, secrets=[]) =
             ingressRule.withHost(host)
             for host in web.hosts
           ])
-          + ingress.spec.withTls(ingressTLS.withHosts(web.hosts)),
-        ],
+          + if web.tls then ingress.spec.withTls(
+            ingressTLS.withHosts(web.hosts)
+            + ingressTLS.withSecretName(std.strReplace(web.hosts[0] + '-tls', '.', '-'))
+          ) else {},
+        ] else [],
     },
 }
