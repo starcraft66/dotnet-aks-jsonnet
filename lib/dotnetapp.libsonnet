@@ -1,4 +1,4 @@
-local k = import 'github.com/jsonnet-libs/k8s-libsonnet/1.23/main.libsonnet';
+local k = import 'github.com/jsonnet-libs/k8s-libsonnet/1.24/main.libsonnet';
 local deploy = k.apps.v1.deployment;
 local deploySpec = k.apps.v1.deployment.spec.template.spec;
 local container = k.core.v1.container;
