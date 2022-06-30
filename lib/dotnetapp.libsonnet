@@ -31,7 +31,8 @@ local withoutNameAnnotation = {
   },
 };
 
-local azureKeyVaultSecretProviderClass(keyVault, usePodIdentity='false', useVMManagedIdentity='true', userAssignedIdentityID='') = {
+# app identity is a magic constant, we should pass it via TLA later
+local azureKeyVaultSecretProviderClass(keyVault, usePodIdentity='false', useVMManagedIdentity='true', userAssignedIdentityID='', tenant='') = {
   apiVersion: 'secrets-store.csi.x-k8s.io/v1',
   kind: 'SecretProviderClass',
   metadata: {
@@ -39,21 +40,31 @@ local azureKeyVaultSecretProviderClass(keyVault, usePodIdentity='false', useVMMa
   },
   spec: {
     provider: 'azure',
-    secretObjects: [{
-      data: [
-        {
-          key: secret.name,
-          objectName: secret.name,
-        }
-        for secret in keyVault.secrets
-      ],
-      secretName: keyVault.k8sSecretName,
-    }],
+    // Sane solution that doesn't seem to work.
+    // secretObjects: [{
+    //   data: [
+    //     {
+    //       key: secret.name,
+    //       objectName: secret.nameInKeyVault,
+    //     }
+    //     for secret in keyVault.secrets
+    //   ],
+    //   secretName: keyVault.k8sSecretName,
+    // }],
     parameters: {
       usePodIdentity: usePodIdentity,
       useVMManagedIdentity: useVMManagedIdentity,
       userAssignedIdentityID: userAssignedIdentityID,
       keyvaultName: keyVault.name,
+      tenantId: tenant,
+      # whack shit required for
+      # https://azure.github.io/secrets-store-csi-driver-provider-azure/docs/getting-started/usage/#create-your-own-secretproviderclass-object
+      # because the csi driver unmarshals stringified yaml for unknown reasons
+      objects: "array:\n" + std.join("", ["- |\n  objectName: " + secret.nameInKeyVault
+            + "\n  objectAlias: " + secret.name
+            + "\n  objectType: secret\n"
+        for secret in keyVault.secrets
+      ]),
     },
   },
 };
@@ -80,15 +91,16 @@ local csiKeyVaultVolumes(keyVaults) = {
   },
 };
 
-local mkSecret(secretName) =
+local mkSecret(secretName, nameInKeyVault) =
   {
     name: secretName,
+    nameInKeyVault: nameInKeyVault,
   };
 
-local mkKeyVault(name, secrets=[]) =
+local mkKeyVault(name, secrets={}) =
   {
     name: name,
-    secrets: [mkSecret(secretName=secret) for secret in secrets],
+    secrets: std.map(function(key) mkSecret(secretName=key, nameInKeyVault=secrets[key]), std.objectFields(secrets)),
     k8sSecretName: 'azure-key-vault-' + name,
   };
 
