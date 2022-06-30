@@ -48,8 +48,8 @@ I am currently making extensive use of [this](https://github.com/jsonnet-libs/k8
 
 A sample run of the project's output is provided in the `output.yaml` file.
 
-To generate it yoruself, run:
+To generate it yourself, run:
 ```console
-jb update
+jb install
 jsonnet -J vendor app.jsonnet | gojsontoyaml
 ```
