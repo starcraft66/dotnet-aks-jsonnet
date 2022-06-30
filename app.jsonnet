@@ -1,8 +1,8 @@
 local lib = import 'lib/dotnetapp.libsonnet';
 
-lib.mkDotnetApplication(
+function(tag='latest') lib.mkDotnetApplication(
   name='sample-function-app',
-  image='myregistry.azurecr.io/samples/dotnet:v2022-01-22',
+  image='myregistry.azurecr.io/samples/dotnet:' + tag,
   replicas=3,
   web={
     enabled: true,
