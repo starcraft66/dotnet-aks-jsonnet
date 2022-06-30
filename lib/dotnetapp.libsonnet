@@ -122,6 +122,10 @@ local mkKeyVault(name, secrets={}) =
               envFromSource.secretRef.withName(kv.k8sSecretName)
               for kv in self.keyVaultObjects
             ])
+            + container.withVolumeMountsMixin([
+              volumeMount.new(kv.k8sSecretName, '/mnt/secrets-' + kv.name, true)
+              for kv in self.keyVaultObjects
+            ])
             + container.withEnvFromMixin(envFromSource.configMapRef.withName(name + '-config'))
             + container.withPortsMixin([
               containerPort.newNamed(8080, 'http'),
