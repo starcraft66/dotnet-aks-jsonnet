@@ -10,9 +10,10 @@ local servicePort = k.core.v1.servicePort;
 local ingress = k.networking.v1.ingress;
 local ingressTLS = k.networking.v1.ingressTLS;
 local ingressRule = k.networking.v1.ingressRule;
+local volumeMount = k.core.v1.volumeMount;
 
 local withoutNameAnnotation = {
-  // Remvoes the default kubernetes `name` selector because
+  // Removes the default kubernetes `name` selector because
   // we use the more idiomatic `app.kubernetes.io/name` instead
   // Doesn't technically remove it but hides it from the output
   spec+: {
@@ -108,7 +109,7 @@ local mkKeyVault(name, secrets={}) =
   mkDotnetApplication(name, image, config, keyVaults, replicas, web):
     {
       // Stupidity because std.mapWithKeys returns some object with original keys and not an array like you'd expect a map to
-      // A quick search revelas I'm not the only one to complain about this... oh well. Here's the workaround
+      // A quick search reveals I'm not the only one to complain about this... oh well. Here's the workaround
       // https://github.com/google/jsonnet/issues/543
       keyVaultObjects:: std.map(function(key) mkKeyVault(key, keyVaults[key]), std.objectFields(keyVaults)),
       apiVersion: 'v1',
