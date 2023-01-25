@@ -11,6 +11,9 @@ local ingress = k.networking.v1.ingress;
 local ingressTLS = k.networking.v1.ingressTLS;
 local ingressRule = k.networking.v1.ingressRule;
 local volumeMount = k.core.v1.volumeMount;
+local nodeAffinity = k.core.v1.nodeAffinity;
+local nodeSelector = k.core.v1.nodeSelector;
+local nodeSelectorTerm = k.core.v1.nodeSelectorTerm;
 
 local withoutNameAnnotation = {
   // Removes the default kubernetes `name` selector because
@@ -41,17 +44,17 @@ local azureKeyVaultSecretProviderClass(keyVault, usePodIdentity='false', useVMMa
   },
   spec: {
     provider: 'azure',
-    // Sane solution that doesn't seem to work.
-    // secretObjects: [{
-    //   data: [
-    //     {
-    //       key: secret.name,
-    //       objectName: secret.nameInKeyVault,
-    //     }
-    //     for secret in keyVault.secrets
-    //   ],
-    //   secretName: keyVault.k8sSecretName,
-    // }],
+    secretObjects: [{
+      data: [
+        {
+          key: secret.name,
+          objectName: secret.name,
+        }
+        for secret in keyVault.secrets
+      ],
+      secretName: keyVault.k8sSecretName,
+      type: 'Opaque',
+    }],
     parameters: {
       usePodIdentity: usePodIdentity,
       useVMManagedIdentity: useVMManagedIdentity,
@@ -60,10 +63,11 @@ local azureKeyVaultSecretProviderClass(keyVault, usePodIdentity='false', useVMMa
       tenantId: tenant,
       # whack shit required for
       # https://azure.github.io/secrets-store-csi-driver-provider-azure/docs/getting-started/usage/#create-your-own-secretproviderclass-object
-      # because the csi driver unmarshals stringified yaml for unknown reasons
-      objects: "array:\n" + std.join("", ["- |\n  objectName: " + secret.nameInKeyVault
-            + "\n  objectAlias: " + secret.name
-            + "\n  objectType: secret\n"
+      objects: "array:\n" + std.join("", [
+          "  - |\n    objectName: " + secret.nameInKeyVault
+          + "\n    objectAlias: " + secret.name
+          + "\n    objectType: secret"
+          + "\n    objectVersion: \"\"\n"
         for secret in keyVault.secrets
       ]),
     },
@@ -106,7 +110,7 @@ local mkKeyVault(name, secrets={}) =
   };
 
 {
-  mkDotnetApplication(name, image, config, keyVaults, replicas, web):
+  mkDotnetApplication(name, image, config, keyVaults, replicas, web, nodePool=''):
     {
       // Stupidity because std.mapWithKeys returns some object with original keys and not an array like you'd expect a map to
       // A quick search reveals I'm not the only one to complain about this... oh well. Here's the workaround
@@ -128,11 +132,14 @@ local mkKeyVault(name, secrets={}) =
             ])
             + container.withEnvFromMixin(envFromSource.configMapRef.withName(name + '-config'))
             + container.withPortsMixin([
-              containerPort.newNamed(8080, 'http'),
+              containerPort.newNamed(80, 'http'),
             ]),
             container.new(name='dotnet-monitor', image='mcr.microsoft.com/dotnet/monitor:6.0.0'),
           ], replicas=replicas, podLabels={ 'app.kubernetes.io/name': name })
           + withoutNameAnnotation
+          + (if nodePool != '' then deploy.spec.template.spec.withNodeSelectorMixin(
+              {'kubernetes.azure.com/agentpool': 'default'}
+            ) else {})
           + csiKeyVaultVolumes(self.keyVaultObjects),
         ]
         + [

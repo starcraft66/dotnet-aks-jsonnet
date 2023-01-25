@@ -16,12 +16,15 @@ function(tag='latest') lib.mkDotnetApplication(
     "EventHub__Name": "something",
     "EventHub__ConsumerGroup": "something-consumer-group",
     "ServiceBus__TopicName": "sbt-something-dev-01",
-    "EventHub__SubscriptionName": "sbs-something-dev-01",
+    "ServiceBus__SubscriptionName": "sbts-something-dev-01",
   },
   keyVaults={
     'app-secrets-1': {
       'EventHub__ConnectionString': 'event-hub-connection-string',
       'ServiceBus__ConnectionString': 'service-bus-connection-string',
+      'AzureWebJobsStorage': 'webjobs-storage-account-connection-string',
+      'AzureWebJobsDashboard': 'webjobs-storage-account-connection-string',
     }
-  }
+  },
+  nodePool='default',
 )

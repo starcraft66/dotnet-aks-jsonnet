@@ -23,7 +23,7 @@ items:
           image: myregistry.azurecr.io/samples/dotnet:latest
           name: sample-function-app
           ports:
-          - containerPort: 8080
+          - containerPort: 80
             name: http
           volumeMounts:
           - mountPath: /mnt/secrets-app-secrets-1
@@ -31,6 +31,8 @@ items:
             readOnly: true
         - image: mcr.microsoft.com/dotnet/monitor:6.0.0
           name: dotnet-monitor
+        nodeSelector:
+          kubernetes.azure.com/agentpool: default
         volumes:
         - csi:
             driver: secrets-store.csi.k8s.io
@@ -42,7 +44,7 @@ items:
   data:
     EventHub__ConsumerGroup: something-consumer-group
     EventHub__Name: something
-    EventHub__SubscriptionName: sbs-something-dev-01
+    ServiceBus__SubscriptionName: sbts-something-dev-01
     ServiceBus__TopicName: sbt-something-dev-01
   kind: ConfigMap
   metadata:
@@ -56,19 +58,43 @@ items:
       keyvaultName: app-secrets-1
       objects: |
         array:
-        - |
-          objectName: event-hub-connection-string
-          objectAlias: EventHub__ConnectionString
-          objectType: secret
-        - |
-          objectName: service-bus-connection-string
-          objectAlias: ServiceBus__ConnectionString
-          objectType: secret
+          - |
+            objectName: webjobs-storage-account-connection-string
+            objectAlias: AzureWebJobsDashboard
+            objectType: secret
+            objectVersion: ""
+          - |
+            objectName: webjobs-storage-account-connection-string
+            objectAlias: AzureWebJobsStorage
+            objectType: secret
+            objectVersion: ""
+          - |
+            objectName: event-hub-connection-string
+            objectAlias: EventHub__ConnectionString
+            objectType: secret
+            objectVersion: ""
+          - |
+            objectName: service-bus-connection-string
+            objectAlias: ServiceBus__ConnectionString
+            objectType: secret
+            objectVersion: ""
       tenantId: ""
       usePodIdentity: "false"
       useVMManagedIdentity: "true"
       userAssignedIdentityID: ""
     provider: azure
+    secretObjects:
+    - data:
+      - key: AzureWebJobsDashboard
+        objectName: AzureWebJobsDashboard
+      - key: AzureWebJobsStorage
+        objectName: AzureWebJobsStorage
+      - key: EventHub__ConnectionString
+        objectName: EventHub__ConnectionString
+      - key: ServiceBus__ConnectionString
+        objectName: ServiceBus__ConnectionString
+      secretName: azure-key-vault-app-secrets-1
+      type: Opaque
 - apiVersion: v1
   kind: Service
   metadata:
